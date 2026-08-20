@@ -1,5 +1,5 @@
 cff-version: 1.2.0
-title: "ctmpy: Bounded-trait psychometrics with the Anchored Logistic Family"
+title: "cogtraitmodel: Bounded-trait psychometrics with the Anchored Logistic Family"
 message: "If you use this software, please cite it as below."
 type: software
 authors:
@@ -7,7 +7,7 @@ authors:
     given-names: Jaehwa
     email: jaechoi@gwu.edu
     affiliation: "The George Washington University"
-version: 0.1.0
+version: 0.1.1
 date-released: "2026-08-20"
 license: MIT
 doi: 10.5281/zenodo.22031040
@@ -17,7 +17,7 @@ identifiers:
     description: "Concept DOI — resolves to the latest version"
   - type: doi
     value: 10.5281/zenodo.22031041
-    description: "Version DOI for v0.1.0"
+    description: "Version DOI for v0.1.0 (published as ctmpy)"
 repository-code: "https://github.com/JaehwaFChoi/ctmpy"
 keywords:
   - psychometrics

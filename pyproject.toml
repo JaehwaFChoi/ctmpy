@@ -3,8 +3,8 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "ctmpy"
-version = "0.1.0"
+name = "cogtraitmodel"
+version = "0.1.1"
 description = "Bounded-trait psychometrics: the Anchored Logistic Family (Cognitive Trait Model and its mastery-anchor generalisation), with quadrature-based Bayes modal estimation."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -39,7 +39,7 @@ Repository = "https://github.com/JaehwaFChoi/ctmpy"
 Issues = "https://github.com/JaehwaFChoi/ctmpy/issues"
 
 [tool.hatch.build.targets.wheel]
-packages = ["ctmpy"]
+packages = ["cogtraitmodel"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

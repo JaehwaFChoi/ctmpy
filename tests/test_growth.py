@@ -1,4 +1,4 @@
-"""ctmpy.growth / ctmpy.scale 테스트.
+"""cogtraitmodel.growth / cogtraitmodel.scale 테스트.
 
 핵심 주장 세 가지를 고정한다:
   (1) 유한 L 은 척도 재조정으로 L=1 에 환원된다 (기계정밀도).
@@ -9,9 +9,9 @@
 import numpy as np
 import pytest
 
-import ctmpy
-from ctmpy import growth, scale
-from ctmpy.hctm import p2_ctm_L
+import cogtraitmodel as ctm
+from cogtraitmodel import growth, scale
+from cogtraitmodel.hctm import p2_ctm_L
 
 
 # ── (1) 척도 환원 항등식 ────────────────────────────────────────────
@@ -21,13 +21,13 @@ def test_finite_L_reduces_to_unit_scale(a, b, L):
     """P_L(th; a, b) == P_1(th/L; a*L, b/L) — 기계정밀도로 성립."""
     th = np.linspace(0.01, L * 0.99, 300)
     lhs = p2_ctm_L(th, a, b, L)
-    rhs = ctmpy.p2_naive(th / L, a * L, b / L)
+    rhs = ctm.p2_naive(th / L, a * L, b / L)
     assert np.abs(lhs - rhs).max() < 1e-13
 
 
 def test_score_L_returns_theta_on_L_scale():
     L = 3.0
-    th = ctmpy.gen_theta(300, rng=np.random.default_rng(0)) * L
+    th = ctm.gen_theta(300, rng=np.random.default_rng(0)) * L
     a = np.full(20, 8.0) / L
     b = np.linspace(0.1, 0.9, 20) * L
     P = p2_ctm_L(th[:, None], a, b, L)
@@ -39,7 +39,7 @@ def test_score_L_returns_theta_on_L_scale():
 
 def test_fit_L_recovers_difficulty_on_L_scale():
     L = 2.5
-    th = ctmpy.gen_theta(600, rng=np.random.default_rng(2)) * L
+    th = ctm.gen_theta(600, rng=np.random.default_rng(2)) * L
     a = np.full(20, 8.0) / L
     b = np.linspace(0.1, 0.9, 20) * L
     P = p2_ctm_L(th[:, None], a, b, L)
@@ -125,7 +125,7 @@ def test_fit_rejects_mismatched_history():
 
 # ── 사전분포 변환 ───────────────────────────────────────────────────
 def test_to_prior_normalises_and_centres():
-    nodes, _ = ctmpy.make_grid(41, 2.0, 2.0)
+    nodes, _ = ctm.make_grid(41, 2.0, 2.0)
     qw = 0.5 * np.polynomial.legendre.leggauss(41)[1]
     W = growth.to_prior(np.array([0.3, 0.7]), np.array([0.1, 0.1]), nodes, qw)
     assert np.allclose(W.sum(axis=1), 1.0)
@@ -142,7 +142,7 @@ def _sequential_setup(n=250, JB=40, T=6, K=5, seed=6260):
     rate = rng.uniform(0.10, 0.60, n)
     TH = np.array([th0 + (1 - th0) * (1 - np.exp(-rate * t)) for t in range(T)])
     items = [rng.choice(JB, K, replace=False) for _ in range(T)]
-    resp = [ctmpy.gen_responses(TH[t], ab[items[t]], bb[items[t]], rng=rng)
+    resp = [ctm.gen_responses(TH[t], ab[items[t]], bb[items[t]], rng=rng)
             for t in range(T)]
     return TH, items, resp, ab, bb
 

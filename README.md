@@ -1,4 +1,4 @@
-# ctmpy
+# cogtraitmodel
 
 [![DOI](https://zenodo.org/badge/1340220989.svg)](https://doi.org/10.5281/zenodo.22031040)
 [![tests](https://github.com/JaehwaFChoi/ctmpy/actions/workflows/ci.yml/badge.svg)](https://github.com/JaehwaFChoi/ctmpy/actions/workflows/ci.yml)
@@ -11,7 +11,7 @@ A trait level of `0.62` means *62% of mastery of a stated task domain*, not
 "0.62 standard deviations above whoever happened to be calibrated".
 
 ```bash
-pip install ctmpy
+pip install cogtraitmodel
 ```
 
 ## Why
@@ -22,7 +22,7 @@ assessment, learning progressions and adaptive instruction, the question is not
 *who is ahead* but *how far along is this learner*. Placing θ on `[0, 1]` with
 0 and 1 defined by the task domain answers that question directly.
 
-`ctmpy` makes the model usable inside a response loop:
+The package makes the model usable inside a response loop:
 
 - **No MCMC.** Item parameters come from Bayes modal EM on a Gauss–Legendre
   grid — 35× faster than a converged random-walk sampler and 73× faster than
@@ -37,19 +37,19 @@ assessment, learning progressions and adaptive instruction, the question is not
 
 ```python
 import numpy as np
-import ctmpy
+import cogtraitmodel as ctm      # the paper's abbreviation, kept short
 
 # simulate
-theta = ctmpy.gen_theta(1000, rng=np.random.default_rng(0))
+theta = ctm.gen_theta(1000, rng=np.random.default_rng(0))
 alpha = np.full(20, 8.0)
 beta  = np.linspace(0.1, 0.9, 20)
-Y = ctmpy.gen_responses(theta, alpha, beta, rng=np.random.default_rng(1))
+Y = ctm.gen_responses(theta, alpha, beta, rng=np.random.default_rng(1))
 
 # calibrate items
-fit = ctmpy.bayes_modal_em(Y)
+fit = ctm.bayes_modal_em(Y)
 
 # score persons — MAP point estimate with posterior SD
-out = ctmpy.score(Y, fit["alpha"], fit["beta"])
+out = ctm.score(Y, fit["alpha"], fit["beta"])
 out["theta"]   # 0.62  ->  "62% of mastery"
 out["sd"]      # report this alongside; it decides when to stop testing
 ```
@@ -58,9 +58,9 @@ Three-parameter (with guessing), information functions, and the empirical
 dataset used in the paper:
 
 ```python
-fit3 = ctmpy.bayes_modal_em(Y, three_p=True)
-ctmpy.tif(np.linspace(0.02, 0.98, 25), alpha, beta)   # test information
-Y_lsat = ctmpy.datasets.build()                       # LSAT Section 6, (1000, 5)
+fit3 = ctm.bayes_modal_em(Y, three_p=True)
+ctm.tif(np.linspace(0.02, 0.98, 25), alpha, beta)   # test information
+Y_lsat = ctm.datasets.build()                       # LSAT Section 6, (1000, 5)
 ```
 
 ### Tracking a learner over time
@@ -73,7 +73,7 @@ is the prediction step of a state-space model — a transition that moves the
 distribution, not just widens it.
 
 ```python
-from ctmpy import growth
+from cogtraitmodel import growth
 
 out = growth.sequential_score(
     responses,      # list of (n, K_t) arrays, one per occasion
@@ -109,8 +109,8 @@ P_L(θ; α, β)  ==  P_1(θ/L; αL, β/L)      # exact to machine precision
 so `fit_L` and `score_L` are rescaling wrappers around the `L = 1` path:
 
 ```python
-fit = ctmpy.fit_L(Y, L=3.0)                      # item parameters on the L scale
-out = ctmpy.score_L(Y, fit["alpha"], fit["beta"], L=3.0)   # θ ∈ [0, 3]
+fit = ctm.fit_L(Y, L=3.0)                      # item parameters on the L scale
+out = ctm.score_L(Y, fit["alpha"], fit["beta"], L=3.0)   # θ ∈ [0, 3]
 ```
 
 One consequence is worth stating: the same response data fit equally well at
@@ -132,7 +132,7 @@ normalising constant.
 
 **Origin before unit.** An origin alone already licenses ratio statements; the
 unit is a further commitment — that the tasks in hand exhaust the domain. Use
-`L = 1` for measurement, and `L → ∞` (`ctmpy.hctm`) as a growth curve on the
+`L = 1` for measurement, and `L → ∞` (`cogtraitmodel.hctm`) as a growth curve on the
 time axis, where no finite horizon should be imposed.
 
 ## What to watch out for
@@ -169,10 +169,11 @@ pytest -q     # 127 tests
 If you use this package, please cite both the software and the model.
 
 ```bibtex
-@software{choi_ctmpy,
+@software{choi_cogtraitmodel,
   author  = {Choi, Jaehwa},
-  title   = {ctmpy: Bounded-trait psychometrics with the Anchored Logistic Family},
-  version = {0.1.0},
+  title   = {cogtraitmodel: Bounded-trait psychometrics with the Anchored
+             Logistic Family},
+  version = {0.1.1},
   year    = {2026},
   doi     = {10.5281/zenodo.22031040},   % concept DOI — resolves to the latest version
   url     = {https://github.com/JaehwaFChoi/ctmpy}
