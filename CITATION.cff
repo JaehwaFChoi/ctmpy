@@ -10,6 +10,14 @@ authors:
 version: 0.1.0
 date-released: "2026-08-20"
 license: MIT
+doi: 10.5281/zenodo.22031040
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.22031040
+    description: "Concept DOI — resolves to the latest version"
+  - type: doi
+    value: 10.5281/zenodo.22031041
+    description: "Version DOI for v0.1.0"
 repository-code: "https://github.com/JaehwaFChoi/ctmpy"
 keywords:
   - psychometrics
