@@ -1,5 +1,8 @@
 # ctmpy
 
+[![DOI](https://zenodo.org/badge/1340220989.svg)](https://doi.org/10.5281/zenodo.22031040)
+[![tests](https://github.com/JaehwaFChoi/ctmpy/actions/workflows/ci.yml/badge.svg)](https://github.com/JaehwaFChoi/ctmpy/actions/workflows/ci.yml)
+
 Bounded-trait psychometrics in Python: the **Anchored Logistic Family (ALF)** —
 the Cognitive Trait Model of Choi (2022) and its generalisation to an arbitrary
 mastery anchor — with deterministic, quadrature-based estimation.
@@ -171,7 +174,7 @@ If you use this package, please cite both the software and the model.
   title   = {ctmpy: Bounded-trait psychometrics with the Anchored Logistic Family},
   version = {0.1.0},
   year    = {2026},
-  doi     = {10.5281/zenodo.XXXXXXX},
+  doi     = {10.5281/zenodo.22031040},   % concept DOI — resolves to the latest version
   url     = {https://github.com/JaehwaFChoi/ctmpy}
 }
 
