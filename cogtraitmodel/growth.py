@@ -1,39 +1,46 @@
-"""cogtraitmodel.growth — 시간축 위의 HCTM: 성장곡선 적합과 순차 사전분포 갱신.
+"""cogtraitmodel.growth — HCTM on the time axis: growth-curve fitting and
+sequential prior updating.
 
-베이즈 갱신만으로는 부족하다
-----------------------------
-베이즈 갱신은 **고정된** 양에 증거를 쌓는 정리다. 학습자의 theta 는 고정이
-아니며, 그것이 반복 측정의 이유다. 사후분포를 그대로 이월하면 "이 사람은
-지난번 그 자리에 있다"를 사전정보로 주장하게 되고, 추정기는 새 증거를 자기
-사전분포를 이기는 데 소모한다. 실측상 이월은 **기억이 없는 것보다 나빴다**
-(RMSE 0.2295 대 0.1215) — 게다가 보고 SD 는 오히려 줄어 오차의 4분의 1을
-주장한다.
+Bayesian updating alone is not enough
+-------------------------------------
+Bayes' theorem accumulates evidence about a quantity that is **fixed**. A
+learner's theta is not fixed — that is the reason for measuring repeatedly.
+Carrying the posterior forward unchanged asserts as prior information that
+"this person is where they were last time", and the estimator then spends the
+new evidence on overcoming its own prior. Empirically the carry-forward was
+**worse than having no memory at all** (RMSE 0.2295 against 0.1215) — and it
+reported a *smaller* SD, claiming a quarter of the actual error.
 
-필요한 것은 상태공간 모형의 **예측 단계**다: 분포를 넓히기만 하는 것이
-아니라 옮기는 전이. 이 모듈이 그 전이를 제공한다.
+What is needed is the **prediction step** of a state-space model: a transition
+that moves the distribution rather than merely widening it. This module
+supplies that transition.
 
-왜 HCTM 인가
-------------
-성장곡선은 바닥은 필요하되 천장을 미리 부과해서는 안 된다. L -> inf 구성원은
-절대영점을 갖고 상한이 없으므로 시간 지평 상수 H 가 필요 없다 —
-theta(t) = gamma + (delta - gamma) * P_hctm(t; alpha, beta) 는 t 를 자연
-단위 그대로 받는다. 네 모수는 교사가 알아볼 뜻을 가진다:
+Why HCTM
+--------
+A growth curve needs a floor but must not impose a ceiling in advance. The
+L -> inf member has an absolute zero and no upper limit, so no time-horizon
+constant H is required — theta(t) = gamma + (delta - gamma) *
+P_hctm(t; alpha, beta) takes t in its natural units. The four parameters carry
+meanings a teacher would recognise:
 
-    gamma  진입 수준          delta  수렴 수준
-    alpha  학습 속도          beta   성장이 일어나는 시기
+    gamma  entry level          delta  level converged to
+    alpha  rate of learning     beta   when growth happens
 
-delta < gamma 면 감쇠(망각)가 같은 네 모수로 표현된다. 단조 곡선이므로
-**올랐다 내려가는 궤적은 어떤 모수값으로도 표현되지 않는다** — 이 실패는
-자료가 늘어도 사라지지 않으며, 그런 경우 기억 없는 채점이 더 낫다.
+Setting delta < gamma expresses decay (forgetting) within the same four
+parameters. The curve is monotone, so **a trajectory that rises and then falls
+cannot be represented at any parameter setting** — a failure that does not go
+away as data accumulate, and where memoryless scoring is the better choice.
 
-자유도 규율 (강제됨)
---------------------
-이력이 길어지는 속도와 같은 속도로 모수를 풀면 곡선이 이력을 완벽 보간해
-잔차분산이 0 이 되고, 예측분산이 붕괴해 사전분포가 뾰족해진다. 그 결과는
-이 연구에서 관측된 최악의 조건이었다(RMSE 0.21, 보고 SD 가 실제 오차의
-1/7). 따라서 해제 일정은 **항상 k <= H - 1** 을 지키며, 잔차분산은 사후
-SD 가 함의하는 측정오차를 하한으로 갖는다. 이 규율은 선택 인자가 아니라
-`fit` 내부에 고정되어 있다.
+The degrees-of-freedom discipline (enforced)
+--------------------------------------------
+Releasing parameters as fast as the history grows lets the curve interpolate
+that history exactly: the residual variance goes to zero, the predictive
+variance collapses, and the next prior becomes a spike. That was the worst
+condition observed in this study (RMSE 0.21, with a reported SD one seventh of
+the actual error). The unlock schedule therefore always keeps **k <= H - 1**,
+and the residual variance is floored at the measurement error implied by the
+posterior SDs. This discipline is fixed inside `fit` rather than exposed as an
+option.
 
     H <= 2 : gamma                      (k=1)
     H == 3 : gamma, delta               (k=2)
@@ -55,21 +62,22 @@ __all__ = [
     "PROCESS_SD", "COHORT_DEFAULT",
 ]
 
-PROCESS_SD = 0.35          # 과정 잡음 규모 (사전분포 폭의 기저)
-COHORT_DEFAULT = (1.2, 2.0, 0.95)   # (alpha, beta, delta) 코호트 초기값
+PROCESS_SD = 0.35          # process-noise scale (the floor on prior width)
+COHORT_DEFAULT = (1.2, 2.0, 0.95)   # (alpha, beta, delta) cohort starting values
 
 
 def curve(t, alpha, beta, gamma, delta):
-    """4모수 HCTM 성장곡선.
+    """Four-parameter HCTM growth curve.
 
     Parameters
     ----------
     t : array_like
-        시간. 자연 단위 그대로 (정규화 불필요 — 지평 상수가 없다).
-    alpha : float   학습 속도
-    beta : float    성장 시기 (변곡 위치)
-    gamma : float   진입 수준 theta(0)
-    delta : float   수렴 수준. ``delta < gamma`` 면 감쇠 곡선.
+        Time, in its natural units (no rescaling needed — there is no horizon
+        constant).
+    alpha : float   rate of learning
+    beta : float    when growth happens (location of the inflection)
+    gamma : float   entry level, theta(0)
+    delta : float   level converged to. ``delta < gamma`` gives a decay curve.
 
     Returns
     -------
@@ -80,7 +88,10 @@ def curve(t, alpha, beta, gamma, delta):
 
 
 def _schedule(H):
-    """이력 길이 H 에서 풀어줄 모수 개수. 항상 k <= H - 1 (H >= 2)."""
+    """How many parameters to release given a history of length H.
+
+    Always k <= H - 1 for H >= 2.
+    """
     if H <= 2:
         return 1
     if H == 3:
@@ -91,24 +102,28 @@ def _schedule(H):
 
 
 def fit(times, theta, sd, cohort=None):
-    """학습자별 성장곡선 적합 — 자유도 규율이 내장되어 있다.
+    """Fit a growth curve per learner, with the dof discipline built in.
 
     Parameters
     ----------
-    times : (H,) array_like        관측 시점
-    theta : (n, H) array_like      회차별 theta 점추정 (사후평균 권장)
-    sd : (n, H) array_like         회차별 사후 SD. 적합의 가중치이자
-                                   잔차분산의 하한으로 쓰인다.
-    cohort : tuple, optional       (alpha, beta, delta) 코호트 기준값.
-                                   이력이 짧아 개인별로 못 푸는 모수를 메운다.
+    times : (H,) array_like        observation times
+    theta : (n, H) array_like      theta point estimates by occasion
+                                   (posterior means recommended)
+    sd : (n, H) array_like         posterior SDs by occasion. These weight the
+                                   fit and also floor the residual variance.
+    cohort : tuple, optional       (alpha, beta, delta) cohort reference values,
+                                   used to fill in parameters that a short
+                                   history cannot identify per person.
 
     Returns
     -------
     dict
-        ``params``     (n, 4) — 열 순서 (alpha, beta, gamma, delta)
-        ``k``          이번 적합에서 실제로 푼 모수 개수
-        ``resid_var``  (n,) 자유도 보정 잔차분산 (측정오차 하한 적용 후)
-        ``ok``         (n,) 최적화 수렴 여부. False 면 마지막 관측으로 대체됨.
+        ``params``     (n, 4) — columns are (alpha, beta, gamma, delta)
+        ``k``          how many parameters were actually released in this fit
+        ``resid_var``  (n,) dof-corrected residual variance, after the
+                       measurement-error floor is applied
+        ``ok``         (n,) whether the optimizer converged. Where False, the
+                       last observation is carried instead.
     """
     ts = np.asarray(times, dtype=float)
     th = np.atleast_2d(np.asarray(theta, dtype=float))
@@ -117,7 +132,7 @@ def fit(times, theta, sd, cohort=None):
     if s.shape != th.shape:
         raise ValueError(f"sd shape {s.shape} != theta shape {th.shape}")
     if ts.shape[0] != H:
-        raise ValueError(f"times 길이 {ts.shape[0]} != 이력 길이 {H}")
+        raise ValueError(f"times has length {ts.shape[0]} != history length {H}")
 
     a0, b0, d0 = cohort or COHORT_DEFAULT
     k = _schedule(H)
@@ -164,11 +179,11 @@ def fit(times, theta, sd, cohort=None):
                     4: (r.x[2], r.x[3], r.x[0], r.x[1])}[k]
             params[i] = full
             resid = f(r.x, ts) - y
-            # 자유도 보정: H - k >= 1 이 보장되므로 0 으로 나뉘지 않는다
+            # dof correction: H - k >= 1 is guaranteed, so this cannot divide by zero
             rv = float((resid ** 2).sum()) / max(H - k, 1)
-            floor = float((si ** 2).mean()) / H       # 측정오차 하한
+            floor = float((si ** 2).mean()) / H       # measurement-error floor
             rvar[i] = max(rv, floor)
-        except Exception:                 # 수렴 실패 → 마지막 관측 유지
+        except Exception:                 # no convergence -> keep the last observation
             params[i] = (a0, b0, y[-1], y[-1])
             rvar[i] = float(si[-1] ** 2)
             ok[i] = False
@@ -177,15 +192,16 @@ def fit(times, theta, sd, cohort=None):
 
 
 def predict(times, theta, sd, t_next, cohort=None):
-    """다음 회차의 예측 평균과 예측 SD — 상태공간의 예측 단계.
+    """Predictive mean and SD for the next occasion — the prediction step.
 
-    예측 SD 는 세 항의 합이다: 자유도 보정 잔차분산(모수 수에 따른 팽창
-    계수 1 + k/H 포함), 외삽 거리에 비례하는 항, 과정 잡음. 순수한 적합
-    오차만 쓰면 예측분산이 과소평가된다.
+    The predictive SD sums three terms: the dof-corrected residual variance
+    (inflated by 1 + k/H for the number of parameters released), a term
+    proportional to the extrapolation distance, and process noise. Using the
+    fit error alone would understate the predictive variance.
 
     Returns
     -------
-    (mean, sd) : 각각 (n,) ndarray
+    (mean, sd) : each an (n,) ndarray
     """
     ts = np.asarray(times, dtype=float)
     th = np.atleast_2d(np.asarray(theta, dtype=float))
@@ -205,7 +221,7 @@ def predict(times, theta, sd, t_next, cohort=None):
         psd = np.sqrt(rv * (1.0 + k / H)
                       + (0.03 * gap) ** 2
                       + (PROCESS_SD * 0.15) ** 2)
-        # 수렴 실패자는 마지막 관측 + 여유
+        # where the fit failed, carry the last observation with extra slack
         bad = ~res["ok"]
         if bad.any():
             mean[bad] = th[bad, -1]
@@ -215,20 +231,21 @@ def predict(times, theta, sd, t_next, cohort=None):
 
 
 def to_prior(mean, sd, nodes, quad_w):
-    """theta 척도의 (평균, SD) 예측을 구적 격자 위 사전분포 가중치로 옮긴다.
+    """Turn a predicted (mean, SD) on the theta scale into prior weights on the
+    quadrature grid.
 
-    logit 정규분포를 쓴다 — theta 가 [0,1] 에 갇혀 있으므로 정규분포를
-    직접 얹으면 경계에서 질량이 새어나간다.
+    A logit-normal is used: theta is confined to [0,1], so laying a normal
+    directly on it leaks mass past the boundaries.
 
     Parameters
     ----------
-    mean, sd : (n,) array_like    예측 평균과 SD (theta 척도)
-    nodes : (K,) ndarray          `core.make_grid` 의 노드
-    quad_w : (K,) ndarray         Gauss-Legendre 가중치(사전분포 미포함)
+    mean, sd : (n,) array_like    predictive mean and SD on the theta scale
+    nodes : (K,) ndarray          nodes from `core.make_grid`
+    quad_w : (K,) ndarray         Gauss-Legendre weights, without the prior
 
     Returns
     -------
-    (n, K) ndarray — 행마다 합이 1
+    (n, K) ndarray — each row sums to 1
     """
     m = np.clip(np.asarray(mean, dtype=float), 2e-3, 1 - 2e-3)
     s = np.asarray(sd, dtype=float)
@@ -244,33 +261,36 @@ def to_prior(mean, sd, nodes, quad_w):
 def sequential_score(responses, items, alpha, beta, gamma=None,
                      times=None, memory="hctm", n_nodes=41,
                      prior=(2.0, 2.0), cohort=None):
-    """회차별 응답을 순차적으로 채점한다 — 예측 단계 포함.
+    """Score responses occasion by occasion, including the prediction step.
 
-    문항모수는 **앵커되어 있다고 가정한다**. 회차마다 재캘리브레이션하면
-    척도가 함께 움직여 성장과 구별되지 않는다.
+    Item parameters are **assumed to be anchored**. Recalibrating at every
+    occasion lets the scale move along with the learners, which makes growth
+    indistinguishable from drift.
 
     Parameters
     ----------
-    responses : list of (n, K_t) 배열     회차별 0/1 응답
-    items : list of (K_t,) 정수배열       회차별 투입 문항의 뱅크 색인
-    alpha, beta : (J,) array_like         앵커된 문항모수 (뱅크 전체)
-    gamma : (J,) array_like, optional     3모수인 경우
-    times : (T,) array_like, optional     시점. 기본값 0, 1, ..., T-1
-    memory : {"hctm", "none"}             "none" 이면 매 회차 모집단 사전분포
-                                          (기억 없음 기준선)
+    responses : list of (n, K_t) arrays    0/1 responses per occasion
+    items : list of (K_t,) integer arrays  bank indices administered per occasion
+    alpha, beta : (J,) array_like          anchored item parameters (whole bank)
+    gamma : (J,) array_like, optional      for the three-parameter model
+    times : (T,) array_like, optional      occasion times. Defaults to 0, 1, ..., T-1
+    memory : {"hctm", "none"}              "none" uses the population prior at
+                                           every occasion (the memoryless baseline)
+
     Returns
     -------
     dict
-        ``theta``  (T, n) 회차별 사후평균
-        ``sd``     (T, n) 회차별 사후 SD
-        ``k``      (T,) 각 회차에서 성장모형이 푼 모수 개수 (memory="none"이면 0)
+        ``theta``  (T, n) posterior means by occasion
+        ``sd``     (T, n) posterior SDs by occasion
+        ``k``      (T,) parameters released by the growth model at each
+                   occasion (0 when memory="none")
     """
     if memory not in ("hctm", "none"):
-        raise ValueError("memory 는 'hctm' 또는 'none'")
+        raise ValueError("memory must be 'hctm' or 'none'")
 
     T = len(responses)
     if len(items) != T:
-        raise ValueError("responses 와 items 의 길이가 다르다")
+        raise ValueError("responses and items have different lengths")
     ts = np.arange(T, dtype=float) if times is None \
         else np.asarray(times, dtype=float)
 

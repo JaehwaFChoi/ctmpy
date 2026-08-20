@@ -1,9 +1,10 @@
-"""cogtraitmodel.growth / cogtraitmodel.scale 테스트.
+"""Tests for cogtraitmodel.growth and cogtraitmodel.scale.
 
-핵심 주장 세 가지를 고정한다:
-  (1) 유한 L 은 척도 재조정으로 L=1 에 환원된다 (기계정밀도).
-  (2) 자유도 규율 k <= H-1 이 항상 지켜진다 — 위반은 이 연구 최악의 결과.
-  (3) 성장 사전분포가 기억 없는 채점보다 낫다 (후반 회차에서).
+Three claims are pinned here:
+  (1) finite L reduces to L = 1 by rescaling, to machine precision
+  (2) the dof discipline k <= H-1 always holds — violating it produced the
+      worst result in the study
+  (3) the growth prior beats memoryless scoring at later occasions
 """
 
 import numpy as np
@@ -14,11 +15,11 @@ from cogtraitmodel import growth, scale
 from cogtraitmodel.hctm import p2_ctm_L
 
 
-# ── (1) 척도 환원 항등식 ────────────────────────────────────────────
+# ── (1) the rescaling identity ──────────────────────────────────────
 @pytest.mark.parametrize("a,b,L", [(1.0, 0.5, 2.0), (5.0, 0.4, 3.0),
                                    (2.0, 1.5, 5.0), (0.8, 2.0, 4.0)])
 def test_finite_L_reduces_to_unit_scale(a, b, L):
-    """P_L(th; a, b) == P_1(th/L; a*L, b/L) — 기계정밀도로 성립."""
+    """P_L(th; a, b) == P_1(th/L; a*L, b/L) — holds to machine precision."""
     th = np.linspace(0.01, L * 0.99, 300)
     lhs = p2_ctm_L(th, a, b, L)
     rhs = ctm.p2_naive(th / L, a * L, b / L)
@@ -50,7 +51,7 @@ def test_fit_L_recovers_difficulty_on_L_scale():
 
 
 def test_infinite_L_is_rejected_with_pointer_to_growth():
-    """L -> inf 는 측정 모형이 아니다 — 명시적으로 거부하고 growth 를 가리킨다."""
+    """L -> inf is not a measurement model — rejected, with a pointer to growth."""
     Y = np.ones((2, 5), dtype=int)
     with pytest.raises(ValueError, match="growth"):
         scale.fit_L(Y, np.inf)
@@ -58,23 +59,23 @@ def test_infinite_L_is_rejected_with_pointer_to_growth():
         scale.fit_L(Y, 0.0)
 
 
-# ── (2) 성장곡선의 형태 ─────────────────────────────────────────────
+# ── (2) shape of the growth curve ───────────────────────────────────
 def test_growth_curve_boundaries():
-    """theta(0) = gamma, t -> inf 에서 delta 로 수렴."""
+    """theta(0) = gamma, and theta converges to delta as t -> inf."""
     g, d = 0.2, 0.9
     assert abs(float(growth.curve(0.0, 1.2, 2.0, g, d)) - g) < 1e-12
     assert abs(float(growth.curve(500.0, 1.2, 2.0, g, d)) - d) < 1e-6
 
 
 def test_growth_curve_represents_decline():
-    """delta < gamma 면 감쇠(망각) — 별도 모형이 필요 없다."""
+    """delta < gamma gives decay (forgetting) — no separate model needed."""
     y = growth.curve(np.linspace(0, 10, 50), 1.0, 3.0, 0.8, 0.3)
     assert np.diff(y).max() <= 1e-12
     assert y[0] > y[-1]
 
 
 def test_growth_curve_is_monotone_always():
-    """단조성은 구조적 — 비단조 궤적은 어떤 모수값으로도 표현 불가."""
+    """Monotonicity is structural — non-monotone paths are unrepresentable."""
     rng = np.random.default_rng(11)
     t = np.linspace(0, 12, 200)
     for _ in range(20):
@@ -85,21 +86,21 @@ def test_growth_curve_is_monotone_always():
         assert np.diff(y).min() >= -1e-12 or np.diff(y).max() <= 1e-12
 
 
-# ── (3) 자유도 규율 ─────────────────────────────────────────────────
+# ── (3) the degrees-of-freedom discipline ───────────────────────────
 @pytest.mark.parametrize("H", [2, 3, 4, 5, 6, 8])
 def test_dof_margin_is_enforced(H):
-    """항상 k <= H - 1 — 위반하면 예측분산이 붕괴한다 (§5.6)."""
+    """Always k <= H - 1 — violating it collapses the predictive variance."""
     ts = np.arange(H, dtype=float)
     th = np.linspace(0.2, 0.8, H)[None, :]
     sd = np.full((1, H), 0.08)
     res = growth.fit(ts, th, sd)
-    assert res["k"] <= H - 1, f"H={H} 에서 k={res['k']} — 자유도 여유 없음"
+    assert res["k"] <= H - 1, f"at H={H}, k={res['k']} — no dof left in reserve"
 
 
 def test_residual_variance_never_collapses():
-    """완벽히 적합되는 이력에서도 잔차분산이 측정오차 하한을 지킨다."""
+    """Even on a perfectly fitting history the residual variance keeps its floor."""
     ts = np.arange(6, dtype=float)
-    th = growth.curve(ts, 1.2, 2.0, 0.2, 0.9)[None, :]   # 모형이 정확한 자료
+    th = growth.curve(ts, 1.2, 2.0, 0.2, 0.9)[None, :]   # data the model fits exactly
     sd = np.full((1, 6), 0.07)
     res = growth.fit(ts, th, sd)
     assert res["resid_var"][0] > 0.0
@@ -123,7 +124,7 @@ def test_fit_rejects_mismatched_history():
         growth.fit(ts, np.zeros((3, 5)), np.ones((3, 5)) * 0.1)
 
 
-# ── 사전분포 변환 ───────────────────────────────────────────────────
+# ── conversion to a prior ───────────────────────────────────────────
 def test_to_prior_normalises_and_centres():
     nodes, _ = ctm.make_grid(41, 2.0, 2.0)
     qw = 0.5 * np.polynomial.legendre.leggauss(41)[1]
@@ -133,7 +134,7 @@ def test_to_prior_normalises_and_centres():
     assert abs(m[0] - 0.3) < 0.05 and abs(m[1] - 0.7) < 0.05
 
 
-# ── 순차 채점 ───────────────────────────────────────────────────────
+# ── sequential scoring ──────────────────────────────────────────────
 def _sequential_setup(n=250, JB=40, T=6, K=5, seed=6260):
     rng = np.random.default_rng(seed)
     ab = np.full(JB, 8.0)
@@ -148,7 +149,7 @@ def _sequential_setup(n=250, JB=40, T=6, K=5, seed=6260):
 
 
 def test_sequential_beats_no_memory_at_later_occasions():
-    """성장 사전분포가 기억 없는 채점보다 후반에 정확하다."""
+    """The growth prior is more accurate than memoryless scoring later on."""
     TH, items, resp, ab, bb = _sequential_setup()
     r_none = growth.sequential_score(resp, items, ab, bb, memory="none")
     r_hctm = growth.sequential_score(resp, items, ab, bb, memory="hctm")
@@ -159,7 +160,7 @@ def test_sequential_beats_no_memory_at_later_occasions():
 
 
 def test_sequential_unlock_schedule_respects_margin():
-    """순차 실행 중 매 회차의 k 가 이력 길이보다 작다."""
+    """During a sequential run, k at each occasion stays below the history length."""
     _, items, resp, ab, bb = _sequential_setup()
     r = growth.sequential_score(resp, items, ab, bb, memory="hctm")
     for t, k in enumerate(r["k"][:-1]):

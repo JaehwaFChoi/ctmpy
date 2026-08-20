@@ -1,11 +1,15 @@
-"""전통 IRT (2PL / 3PL) — CTM 과의 비교용 최소 구현.
+"""Conventional IRT (2PL / 3PL) — a minimal implementation for comparison.
 
-논문 Table 6 (LSAT 자료의 theta 추정치 상관표) 재현을 위해 필요하다.
-구조는 ctm.py 와 의도적으로 동일하게 맞췄다. 다른 점은 두 가지뿐:
-  - theta 가 무계이므로 Gauss-Hermite 구적을 쓰고 절단 범위가 생긴다
-  - 링크 함수가 순수 로지스틱이다
+Needed to reproduce Table 6 of the source article (the correlation table of
+theta estimates on the LSAT data). The structure deliberately mirrors core.py.
+Only two things differ:
 
-이 차이 자체가 CTM 의 논지이므로, 비교 대상으로 남겨둔다.
+  - theta is unbounded, so Gauss-Hermite quadrature is used and the nodes are
+    truncated to a finite range
+  - the link function is the plain logistic
+
+That difference is itself the argument of the Cognitive Trait Model, so this
+module is kept as the object of comparison.
 """
 
 from __future__ import annotations
@@ -16,23 +20,24 @@ __all__ = ["p2pl", "p3pl", "make_grid_normal", "eap_irt", "mmle_em_irt"]
 
 
 def p2pl(theta, a, b):
-    """2PL — 논문 식 (3). P = 1 / (1 + exp(-a(th - b)))"""
+    """2PL — Eq. (3) of the source article. P = 1 / (1 + exp(-a(th - b)))"""
     z = np.asarray(a, dtype=float) * (np.asarray(theta, dtype=float)
                                       - np.asarray(b, dtype=float))
     return 1.0 / (1.0 + np.exp(-np.clip(z, -500, 500)))
 
 
 def p3pl(theta, a, b, c):
-    """3PL — 논문 식 (2). P = c + (1 - c) * 2PL"""
+    """3PL — Eq. (2) of the source article. P = c + (1 - c) * 2PL"""
     c = np.asarray(c, dtype=float)
     return c + (1.0 - c) * p2pl(theta, a, b)
 
 
 def make_grid_normal(n_nodes=61, mu=0.0, sd=1.0):
-    """N(mu, sd^2) 에 대한 Gauss-Hermite 구적 격자.
+    """Gauss-Hermite quadrature grid for N(mu, sd^2).
 
-    CTM 과 달리 theta 가 무계라 노드가 유한 범위로 잘린다.
-    n_nodes=61 이면 대략 +-14.5 까지 덮지만, 그 바깥은 원리적으로 버려진다.
+    Unlike the bounded case, theta is unbounded here, so the nodes are cut off
+    at a finite range. With n_nodes = 61 the grid covers roughly +-14.5;
+    anything beyond that is discarded in principle, not merely in practice.
     """
     x, w = np.polynomial.hermite_e.hermegauss(n_nodes)
     nodes = mu + sd * x
@@ -49,7 +54,7 @@ def _loglik_irt(Y, nodes, a, b, c=None):
 
 
 def eap_irt(Y, a, b, c=None, n_nodes=61):
-    """EAP 추정치와 사후 SD."""
+    """EAP estimate and posterior SD."""
     nodes, w = make_grid_normal(n_nodes)
     ll = _loglik_irt(Y, nodes, a, b, c)
     ll -= ll.max(axis=1, keepdims=True)
@@ -81,7 +86,10 @@ def _item_neg_obj_irt(z, nodes, Nk, rk, three_p, pa, pb, pc):
 def mmle_em_irt(Y, three_p=False, n_nodes=61, prior_a=(0.0, 0.5),
                 prior_b=(0.0, 2.0), prior_c=(7.0, 25.0),
                 max_iter=300, tol=1e-6):
-    """2PL/3PL 문항모수를 MMLE + 사전분포로 추정한다. ctm.bayes_modal_em 과 같은 구조."""
+    """Estimate 2PL/3PL item parameters by MMLE with priors.
+
+    Same structure as `core.bayes_modal_em`.
+    """
     from scipy.optimize import minimize
 
     Y = np.asarray(Y, dtype=float)
@@ -90,7 +98,7 @@ def mmle_em_irt(Y, three_p=False, n_nodes=61, prior_a=(0.0, 0.5),
 
     a = np.ones(J)
     p = np.clip(Y.mean(axis=0), 0.02, 0.98)
-    b = -np.log(p / (1 - p))  # 정답률 높으면 쉬운 문항 = 낮은 b
+    b = -np.log(p / (1 - p))  # a high proportion correct means an easy item = low b
     c = np.full(J, 0.2) if three_p else None
 
     for it in range(max_iter):

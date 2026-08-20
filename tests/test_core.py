@@ -1,7 +1,8 @@
-"""cogtraitmodel 회귀 테스트.
+"""Regression tests for cogtraitmodel.
 
-설계 원칙: 논문 전사판(`p*_naive`)이 정확성 기준(oracle)이며, 어떤 최적화도
-이 기준과 1e-12 이내로 일치해야 한다(Decisions: naive_is_oracle).
+Design principle: the literal transcriptions of the published equations
+(`p*_naive`) are the oracle for correctness, and any optimised path must agree
+with them to within 1e-12 (Decisions: naive_is_oracle).
 """
 
 import numpy as np
@@ -15,11 +16,11 @@ ALPHAS = [0.1, 0.5, 1.0, 5.0, 10.0, 25.0, 100.0]
 BETAS = [0.05, 0.3, 0.5, 0.7, 0.95]
 
 
-# ── 링크함수: 경계·단조성 ────────────────────────────────────────────
+# ── link function: boundaries and monotonicity ──────────────────────
 @pytest.mark.parametrize("a", ALPHAS)
 @pytest.mark.parametrize("b", BETAS)
 def test_boundaries_l1(a, b):
-    """P(0) = 0, P(1) = 1 — 두 앵커가 정확히 유지되는가."""
+    """P(0) = 0 and P(1) = 1 — are both anchors held exactly?"""
     assert abs(float(ctm.p2_naive(0.0, a, b))) < 1e-12
     assert abs(float(ctm.p2_naive(1.0, a, b)) - 1.0) < 1e-12
 
@@ -38,60 +39,60 @@ def test_three_parameter_boundaries():
     assert abs(float(ctm.p3_naive(1.0, 10.0, 0.5, g)) - 1.0) < 1e-12
 
 
-# ── 정규화형 = 전사판 (오라클 고정) ──────────────────────────────────
+# ── normalized form == transcription (pinning the oracle) ───────────
 @pytest.mark.parametrize("a", ALPHAS)
 @pytest.mark.parametrize("b", BETAS)
 def test_general_L_equals_naive_at_L1(a, b):
-    """일반형 L=1 이 논문 식 (13) 을 재현하는가 — 1e-12 이내."""
+    """Does the general form at L = 1 reproduce Eq. (13), to within 1e-12?"""
     th = np.linspace(0.01, 0.99, 401)
     d = np.abs(hctm.p2_ctm_L(th, a, b, 1.0) - ctm.p2_naive(th, a, b)).max()
-    assert d < 1e-12, f"alpha={a} beta={b} 최대차 {d:.2e}"
+    assert d < 1e-12, f"alpha={a} beta={b} max diff {d:.2e}"
 
 
 @pytest.mark.parametrize("a,b", [(1.0, 0.5), (5.0, 0.4), (10.0, 0.7)])
 def test_hctm_is_large_L_limit(a, b):
-    """L 을 키우면 일반형이 HCTM 으로 수렴하는가.
+    """Does the general form converge to HCTM as L grows?
 
-    수렴은 L 이 아니라 alpha*(L-beta) 가 지배한다(논문 §2.3).
+    Convergence is governed by alpha*(L-beta), not by L alone (Section 2.3).
     """
     th = np.linspace(0.01, 0.99, 201)
-    L = max(50.0, 700.0 / a)          # alpha*L < 709 (전개형 오버플로우 한계)
+    L = max(50.0, 700.0 / a)          # alpha*L < 709 (overflow limit of the expanded form)
     d = np.abs(hctm.p2_ctm_L(th, a, b, L) - hctm.p2_hctm(th, a, b)).max()
-    assert d < 1e-9, f"alpha={a} beta={b} L={L} 최대차 {d:.2e}"
+    assert d < 1e-9, f"alpha={a} beta={b} L={L} max diff {d:.2e}"
 
 
 def test_hctm_no_overflow_at_large_alpha_theta():
-    """전개형이 넘치는 영역에서도 로그공간 HCTM 은 유한한가."""
+    """Does the log-space HCTM stay finite where the expanded form overflows?"""
     for a, t in [(10.0, 100.0), (50.0, 200.0), (100.0, 500.0)]:
         v = float(hctm.p2_hctm(t, a, 1.0))
         assert np.isfinite(v) and 0.0 <= v <= 1.0
 
 
-# ── 성질 (논문 §2.5) ────────────────────────────────────────────────
+# ── properties (Section 2.5) ────────────────────────────────────────
 @pytest.mark.parametrize("a", ALPHAS)
 def test_median_exception_at_beta_half(a):
-    """beta = L/2 일 때만 P(beta) = 1/2 가 정확히 성립 (Prop 2.5)."""
+    """P(beta) = 1/2 holds exactly only when beta = L/2 (Prop. 2.5)."""
     assert abs(float(ctm.p2_naive(0.5, a, 0.5)) - 0.5) < 1e-14
 
 
 @pytest.mark.parametrize("a", [1.0, 5.0, 25.0])
 def test_p_at_beta_depends_on_alpha(a):
-    """beta != L/2 에서는 P(beta) 가 alpha 에 의존한다 — Wright map 비이식성."""
+    """For beta != L/2, P(beta) depends on alpha — Wright maps do not transfer."""
     v = float(ctm.p2_naive(0.1, a, 0.1))
     assert abs(v - 0.5) > 1e-6 or a > 50
 
 
 def test_alpha_to_zero_limit():
-    """alpha -> 0 극한은 gamma + (1-gamma)*theta (원 논문 정정 C1)."""
+    """The alpha -> 0 limit is gamma + (1-gamma)*theta (correction C1)."""
     g, th = 0.2, 0.5
     v = float(ctm.p3_naive(th, 1e-6, 0.5, g))
     assert abs(v - (g + (1 - g) * th)) < 1e-5
-    assert abs(v - (th + g)) > 0.05          # 원문 표기와는 불일치
+    assert abs(v - (th + g)) > 0.05          # disagrees with the published expression
 
 
-# ── 구적·채점 ───────────────────────────────────────────────────────
+# ── quadrature and scoring ──────────────────────────────────────────
 def test_grid_integrates_prior_exactly():
-    """Beta(2,2) 는 이차 다항식이므로 Gauss-Legendre 가 정확히 적분한다."""
+    """Beta(2,2) is quadratic, so Gauss-Legendre integrates it exactly."""
     nodes, w = ctm.make_grid(21, 2.0, 2.0)
     assert abs(float(w @ nodes) - 0.5) < 1e-12
     var = float(w @ nodes ** 2) - 0.25
@@ -99,7 +100,7 @@ def test_grid_integrates_prior_exactly():
 
 
 def test_41_nodes_reach_precision_floor():
-    """41노드가 61노드 기준 배정밀도 한계에 도달하는가 (논문 §3.1)."""
+    """Do 41 nodes reach the double-precision floor against 61 (Section 3.1)?"""
     th = ctm.gen_theta(200, rng=np.random.default_rng(1))
     alpha = np.full(20, 8.0)
     beta = np.linspace(0.1, 0.9, 20)
@@ -110,7 +111,7 @@ def test_41_nodes_reach_precision_floor():
 
 
 def test_map_has_no_boundary_solutions():
-    """MAP 은 Beta 사전분포 때문에 (0,1) 내부에 머문다 (논문 §3.3)."""
+    """The Beta prior keeps MAP strictly inside (0,1) (Section 3.3)."""
     th = ctm.gen_theta(500, rng=np.random.default_rng(3))
     alpha = np.full(10, 6.0)
     beta = np.linspace(0.15, 0.85, 10)
@@ -121,7 +122,7 @@ def test_map_has_no_boundary_solutions():
 
 
 def test_mle_produces_boundary_solutions_on_perfect_patterns():
-    """만점 응답자는 MLE 에서 theta=1 로 간다 — 유한하고 위험한 실패."""
+    """A perfect scorer goes to theta = 1 under MLE — a finite, dangerous failure."""
     Y = np.ones((3, 10), dtype=int)
     alpha = np.full(10, 6.0)
     beta = np.linspace(0.15, 0.85, 10)
@@ -139,9 +140,9 @@ def test_score_sd_is_positive_and_finite():
     assert np.isfinite(out["sd"]).all() and (out["sd"] > 0).all()
 
 
-# ── 캘리브레이션 ────────────────────────────────────────────────────
+# ── calibration ─────────────────────────────────────────────────────
 def test_em_recovers_parameters():
-    """Bayes modal EM 이 생성 모수를 회복하는가 (느슨한 허용오차)."""
+    """Does Bayes modal EM recover the generating parameters (loose tolerance)?"""
     th = ctm.gen_theta(1000, rng=np.random.default_rng(7))
     alpha = np.full(20, 8.0)
     beta = np.linspace(0.1, 0.9, 20)
@@ -151,20 +152,20 @@ def test_em_recovers_parameters():
     assert 0.5 < np.median(fit["alpha"]) / 8.0 < 2.0
 
 
-# ── 정보함수 (논문 §3.5) ────────────────────────────────────────────
+# ── information functions (Section 3.5) ─────────────────────────────
 def test_information_diverges_at_mastery_boundary():
-    """2P 는 양쪽 경계에서, 3P 는 위쪽에서만 발산한다."""
+    """2P diverges at both boundaries; 3P only at the upper one."""
     a, b = 10.0, 0.5
     i2_lo = float(info.item_info(1e-4, a, b))
     i3_lo = float(info.item_info(1e-4, a, b, 0.2))
     i2_hi = float(info.item_info(1 - 1e-4, a, b))
     i3_hi = float(info.item_info(1 - 1e-4, a, b, 0.2))
-    assert i2_lo > 100 and i3_lo < 1.0        # gamma 가 하단 발산을 제거
-    assert i2_hi > 100 and i3_hi > 100        # 상단은 gamma 로도 못 막는다
+    assert i2_lo > 100 and i3_lo < 1.0        # gamma removes the lower divergence
+    assert i2_hi > 100 and i3_hi > 100        # gamma cannot stop the upper one
 
 
 def test_information_divergence_rate_is_one():
-    """(L - theta) * I(theta) -> P'(L) — 발산 속도가 정확히 1차."""
+    """(L - theta) * I(theta) -> P'(L) — the rate is exactly first order."""
     a, b = 10.0, 0.5
     eps = 1e-7
     lhs = eps * float(info.item_info(1.0 - eps, a, b))
@@ -173,9 +174,9 @@ def test_information_divergence_rate_is_one():
     assert abs(lhs - dp) / dp < 1e-3
 
 
-# ── 자료 ────────────────────────────────────────────────────────────
+# ── data ────────────────────────────────────────────────────────────
 def test_lsat_dataset_matches_published_values():
-    """LSAT Section 6 자료가 문헌값과 일치하는가 (자체 검증 포함)."""
+    """Does the LSAT Section 6 data match the published values (self-checking)?"""
     Y = ctm.datasets.build(verify=True)
     assert Y.shape == (1000, 5)
     p = Y.mean(axis=0)
@@ -184,7 +185,7 @@ def test_lsat_dataset_matches_published_values():
     assert int((Y.sum(1) == 0).sum()) == 3
 
 
-# ── IRT 비교 기준 ───────────────────────────────────────────────────
+# ── IRT comparison baseline ─────────────────────────────────────────
 def test_irt_2pl_is_half_at_difficulty():
     from cogtraitmodel import irt
     assert abs(float(irt.p2pl(0.0, 1.0, 0.0)) - 0.5) < 1e-14
