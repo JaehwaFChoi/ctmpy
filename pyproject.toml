@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "cogtraitmodel"
-version = "0.1.1"
+version = "0.2.0"
 description = "Bounded-trait psychometrics: the Anchored Logistic Family (Cognitive Trait Model and its mastery-anchor generalisation), with quadrature-based Bayes modal estimation."
 readme = "README.md"
 requires-python = ">=3.9"
