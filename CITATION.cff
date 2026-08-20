@@ -1,0 +1,31 @@
+cff-version: 1.2.0
+title: "ctmpy: Bounded-trait psychometrics with the Anchored Logistic Family"
+message: "If you use this software, please cite it as below."
+type: software
+authors:
+  - family-names: Choi
+    given-names: Jaehwa
+    email: jaechoi@gwu.edu
+    affiliation: "The George Washington University"
+version: 0.1.0
+date-released: "2026-08-20"
+license: MIT
+repository-code: "https://github.com/JaehwaFChoi/ctmpy"
+keywords:
+  - psychometrics
+  - item response theory
+  - cognitive trait model
+  - bounded latent variable
+  - adaptive testing
+references:
+  - type: article
+    authors:
+      - family-names: Choi
+        given-names: Jaehwa
+    title: "Cognitive Trait Model: Measurement Model for Mastery Level and Progression of Learning"
+    journal: Mathematics
+    volume: 10
+    issue: 15
+    start: 2651
+    year: 2022
+    doi: 10.3390/math10152651

@@ -1,0 +1,45 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ctmpy"
+version = "0.1.0"
+description = "Bounded-trait psychometrics: the Anchored Logistic Family (Cognitive Trait Model and its mastery-anchor generalisation), with quadrature-based Bayes modal estimation."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { file = "LICENSE" }
+authors = [{ name = "Jaehwa Choi", email = "jaechoi@gwu.edu" }]
+keywords = [
+  "psychometrics", "item response theory", "cognitive trait model",
+  "bounded latent variable", "adaptive testing", "formative assessment",
+  "mastery", "learning analytics",
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Science/Research",
+  "Intended Audience :: Education",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering :: Mathematics",
+]
+dependencies = ["numpy>=1.21", "scipy>=1.7"]
+
+[project.optional-dependencies]
+figures = ["matplotlib>=3.5"]
+dev = ["pytest>=7.0"]
+
+[project.urls]
+Homepage = "https://github.com/JaehwaFChoi/ctmpy"
+Repository = "https://github.com/JaehwaFChoi/ctmpy"
+Issues = "https://github.com/JaehwaFChoi/ctmpy/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["ctmpy"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
