@@ -163,6 +163,14 @@ published response-pattern frequencies on load.
 ```bash
 pytest -q     # 127 tests
 ```
+## In the browser
+
+The same estimator runs as a web page — paste a response matrix, calibrate,
+and score, with nothing installed and nothing uploaded:
+[jaehwafchoi.github.io/cogtraitmodel-js](https://jaehwafchoi.github.io/cogtraitmodel-js/)
+([doi:10.5281/zenodo.22050655](https://doi.org/10.5281/zenodo.22050655)).
+The JavaScript kernel is a port of this package and is held to it by a parity
+test on every commit.
 
 ## Citation
 
@@ -173,7 +181,7 @@ If you use this package, please cite both the software and the model.
   author  = {Choi, Jaehwa},
   title   = {cogtraitmodel: Bounded-trait psychometrics with the Anchored
              Logistic Family},
-  version = {0.1.1},
+  version = {0.2.2},
   year    = {2026},
   doi     = {10.5281/zenodo.22031040},   % concept DOI — resolves to the latest version
   url     = {https://github.com/JaehwaFChoi/ctmpy}
