@@ -73,7 +73,7 @@ from .hctm import dp_hctm, p2_ctm_L, p2_hctm, p3_hctm
 from .info import info_table, item_info, sem, tif
 from .scale import fit_L, score_L
 
-__version__ = "0.2.0"
+__version__ = "0.2.2"
 
 __all__ = [
     # link functions (L = 1; the literal transcriptions are the oracle)
